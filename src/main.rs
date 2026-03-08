@@ -51,6 +51,14 @@ enum ConfigCommands {
         /// 要写入的值，支持 bool/int/float/字符串
         value: String,
     },
+    /// 重置配置到默认值
+    Reset {
+        /// 跳过确认提示
+        #[arg(long)]
+        force: bool,
+    },
+    /// 更新配置到最新版本
+    Update,
 }
 
 #[derive(Subcommand)]
@@ -160,6 +168,8 @@ async fn main() {
         Some(Commands::Config { command }) => match command {
             ConfigCommands::Get { key } => cli::config::handle_config_get(&key),
             ConfigCommands::Set { key, value } => cli::config::handle_config_set(&key, &value),
+            ConfigCommands::Reset { force } => cli::config::handle_config_reset(force),
+            ConfigCommands::Update => cli::config::handle_config_update(),
         },
         Some(Commands::Flow { command }) => match command {
             None => {

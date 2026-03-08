@@ -1,8 +1,7 @@
-# config Specification
+# config Specification Delta
 
-## Purpose
-TBD - created by archiving change rewrite-in-rust. Update Purpose after archive.
-## Requirements
+## MODIFIED Requirements
+
 ### Requirement: 初始化命令
 
 `aide init` SHALL 执行以下操作：
@@ -31,56 +30,6 @@ TBD - created by archiving change rewrite-in-rust. Update Purpose after archive.
 - **THEN** 不覆盖现有配置
 - **AND** 确保子目录存在
 - **AND** 输出 `✓ 初始化完成，.aide/ 与默认配置已准备就绪`
-
-### Requirement: 配置读取
-
-`aide config get <key>` SHALL 使用点分隔键值表示法读取 TOML 配置值。
-
-支持的键示例：`flow.phases`、`decide.port`、`plantuml.jar_path`。
-
-读取成功时输出 `→ key = value`。键不存在时输出警告。
-
-#### Scenario: 读取简单值
-- **WHEN** 运行 `aide config get decide.port`
-- **AND** 配置中 `[decide]` 段的 `port = 3721`
-- **THEN** 输出 `→ decide.port = 3721`
-
-#### Scenario: 读取数组值
-- **WHEN** 运行 `aide config get flow.phases`
-- **AND** 配置中 `flow.phases = ["task-optimize", "flow-design", "impl"]`
-- **THEN** 输出 `→ flow.phases = ["task-optimize", "flow-design", "impl"]`
-
-#### Scenario: 读取不存在的键
-- **WHEN** 运行 `aide config get nonexistent.key`
-- **THEN** 输出 `⚠` 前缀的警告信息
-
-### Requirement: 配置写入
-
-`aide config set <key> <value>` SHALL 更新 TOML 配置值，保留文件中的已有注释。
-
-值的类型自动推断：
-- `true` / `false` → 布尔值
-- 纯数字 → 整数
-- 含小数点的数字 → 浮点数
-- 其他 → 字符串
-
-写入时 SHALL 使用 `toml_edit` crate 保留注释和格式。
-
-写入成功时输出 `✓ 已更新 key = value`。
-
-#### Scenario: 设置布尔值
-- **WHEN** 运行 `aide config set general.gitignore_aide true`
-- **THEN** 配置文件中 `general.gitignore_aide = true`
-- **AND** 原有注释保留
-- **AND** 输出 `✓ 已更新 general.gitignore_aide = true`
-
-#### Scenario: 设置字符串值
-- **WHEN** 运行 `aide config set task.source my-task.md`
-- **THEN** 配置文件中 `task.source = "my-task.md"`
-
-#### Scenario: 设置嵌套键
-- **WHEN** 运行 `aide config set env.venv.path .venv-custom`
-- **THEN** 配置文件中 `[env.venv]` 段下 `path = ".venv-custom"`
 
 ### Requirement: 配置文件格式
 
@@ -144,6 +93,8 @@ timeout = 0
 - **WHEN** 生成新配置文件
 - **THEN** `[meta]` 节包含当前 aide 版本号
 - **AND** 包含当前配置 schema 版本号
+
+## ADDED Requirements
 
 ### Requirement: 配置重置命令
 
@@ -246,4 +197,3 @@ Schema 版本变更规则：
 - **THEN** 读取配置中的 `meta.schema_version`
 - **AND** 与当前 aide 的 schema 版本比较
 - **AND** 确定是否需要迁移
-

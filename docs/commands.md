@@ -10,8 +10,9 @@ aide init
 
 **行为：**
 - 在当前目录创建 `.aide/` 目录
-- 生成默认 `config.toml` 配置文件（带中文注释）
-- 创建 `decisions/` 和 `logs/` 子目录
+- 生成简洁的 `config.toml` 配置文件（包含 `[meta]` 版本信息）
+- 生成详细的 `config.md` 配置说明文档
+- 创建 `decisions/`、`logs/` 和 `backups/` 子目录
 - 根据 `general.gitignore_aide` 配置管理 `.gitignore`
 - 幂等操作，重复执行不会覆盖已有配置
 
@@ -65,6 +66,48 @@ aide config set plantuml.scale 0.8
 **特性：**
 - 使用 `toml_edit` 保留配置文件中其他位置的注释
 - 自动创建不存在的嵌套节
+
+### aide config reset
+
+```bash
+aide config reset [--force]
+```
+
+重置配置文件到默认值，并自动备份现有配置。
+
+**行为：**
+- 备份现有配置到 `.aide/backups/config.toml.{timestamp}`
+- 生成新的默认 `config.toml`
+- 重新生成 `config.md` 配置说明文档
+- 默认显示确认提示，使用 `--force` 跳过
+
+**示例：**
+```bash
+aide config reset              # 显示确认提示
+aide config reset --force      # 跳过确认直接重置
+```
+
+### aide config update
+
+```bash
+aide config update
+```
+
+更新配置文件到最新版本，处理版本升级时的配置迁移。
+
+**行为：**
+- 检测配置中的 `meta.schema_version`
+- 如版本低于当前版本，执行迁移：
+  - 添加新引入的配置项（使用默认值）
+  - 注释掉废弃的配置项
+  - 保留用户自定义的配置值
+- 更新 `meta` 节的版本信息
+- 重新生成 `config.md` 配置说明文档
+
+**示例：**
+```bash
+aide config update
+```
 
 ---
 

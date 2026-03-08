@@ -3,109 +3,117 @@ use std::path::{Path, PathBuf};
 
 use crate::core::output;
 
-pub const DEFAULT_CONFIG: &str = r#"################################################################################
-#                           Aide 配置文件 (config.toml)
-################################################################################
-#
-# 本配置文件为 Aide 工作流体系的核心配置，由 `aide init` 命令生成。
-# 所有配置项都有详细说明，用户可仅通过本文件了解所有支持的功能。
-#
-# 配置操作说明：
-#   - 读取配置：aide config get <key>        例：aide config get flow.phases
-#   - 设置配置：aide config set <key> <value> 例：aide config set task.source "my-task.md"
-#   - 支持点号分隔的嵌套键，如：env.venv.path
-#
-# 注意：LLM 不应直接编辑此文件，必须通过 aide 命令操作。
-#
-################################################################################
+pub const CURRENT_AIDE_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const CURRENT_SCHEMA_VERSION: i64 = 1;
 
-################################################################################
-# [general] - 通用配置
-################################################################################
-# 控制 Aide 的全局行为设置。
+pub const DEFAULT_CONFIG: &str = r#"[meta]
+aide_version = "0.1.0"
+schema_version = 1
 
 [general]
-# 是否在 .gitignore 中忽略 .aide 目录
-# - true：自动添加 .aide/ 到 .gitignore，不跟踪 aide 状态
-# - false（默认）：不修改 .gitignore，允许 git 跟踪 .aide 目录
-#   推荐使用此设置，便于多设备同步 aide 状态和任务历史
 gitignore_aide = false
 
-################################################################################
-# [task] - 任务文档配置
-################################################################################
-# 定义任务相关文档的默认路径。
-
 [task]
-# 任务原文档路径（用户提供的原始任务描述）
 source = "task-now.md"
-
-# 任务细则文档路径（aide 生成的可执行任务细则）
 spec = "task-spec.md"
-
-# 复杂任务计划文档目录
 plans_path = ".aide/task-plans/"
 
-################################################################################
-# [docs] - 项目文档配置
-################################################################################
-
 [docs]
-# 项目文档目录路径
 path = ".aide/project-docs"
 
-################################################################################
-# [flow] - 流程追踪配置
-################################################################################
-
 [flow]
-# 环节名称列表（有序）
 phases = ["task-optimize", "flow-design", "impl", "verify", "docs", "confirm", "finish"]
-
-# 流程图目录路径
 diagram_path = ".aide/diagrams"
 
-################################################################################
-# [plantuml] - PlantUML 配置
-################################################################################
-
 [plantuml]
-# PlantUML jar 文件路径
 jar_path = ""
-
-# 默认字体名称
 font_name = "Arial"
-
-# DPI 值
 dpi = 300
-
-# 缩放系数
 scale = 0.5
 
-################################################################################
-# [decide] - 待定项确认配置
-################################################################################
-
 [decide]
-# HTTP 服务起始端口
 port = 3721
-
-# 监听地址
 bind = "127.0.0.1"
-
-# 自定义访问地址（可选）
 url = ""
-
-# 超时时间（秒），0 = 不超时
 timeout = 0
+"#;
+
+pub const DEFAULT_CONFIG_MD: &str = r#"# Aide 配置说明
+
+本文档详细说明 `.aide/config.toml` 中的所有配置项。
+
+## 配置操作
+
+- **读取配置**：`aide config get <key>`（如 `aide config get flow.phases`）
+- **设置配置**：`aide config set <key> <value>`（如 `aide config set task.source "my-task.md"`）
+- **重置配置**：`aide config reset`（重置为默认值，自动备份）
+- **更新配置**：`aide config update`（版本升级时更新配置）
+
+支持点号分隔的嵌套键，如 `task.source`、`flow.phases`。
+
+## [meta] - 元数据
+
+配置文件的版本信息，用于版本管理和迁移。
+
+- **aide_version**（字符串）：生成此配置的 aide 版本号
+- **schema_version**（整数）：配置结构的 schema 版本
+
+## [general] - 通用配置
+
+控制 Aide 的全局行为。
+
+- **gitignore_aide**（布尔值，默认 `false`）
+  - `true`：自动添加 `.aide/` 到 `.gitignore`，不跟踪 aide 状态
+  - `false`：不修改 `.gitignore`，允许 git 跟踪 `.aide` 目录（推荐，便于多设备同步）
+
+## [task] - 任务文档配置
+
+定义任务相关文档的路径。
+
+- **source**（字符串，默认 `"task-now.md"`）：用户提供的原始任务描述文档
+- **spec**（字符串，默认 `"task-spec.md"`）：aide 生成的可执行任务细则文档
+- **plans_path**（字符串，默认 `".aide/task-plans/"`）：复杂任务计划文档目录
+
+## [docs] - 项目文档配置
+
+- **path**（字符串，默认 `".aide/project-docs"`）：项目文档目录路径
+
+## [flow] - 流程追踪配置
+
+控制任务流程追踪行为。
+
+- **phases**（数组，默认 `["task-optimize", "flow-design", "impl", "verify", "docs", "confirm", "finish"]`）
+  - 任务流程的环节名称列表（有序）
+  - 可自定义环节名称和顺序
+- **diagram_path**（字符串，默认 `".aide/diagrams"`）：流程图输出目录
+
+## [plantuml] - PlantUML 配置
+
+PlantUML 图表生成相关配置。
+
+- **jar_path**（字符串，默认 `""`）：PlantUML jar 文件路径（留空则使用系统默认）
+- **font_name**（字符串，默认 `"Arial"`）：图表默认字体
+- **dpi**（整数，默认 `300`）：图表 DPI 值
+- **scale**（浮点数，默认 `0.5`）：图表缩放系数
+
+## [decide] - 待定项确认配置
+
+待定项确认 Web 服务配置。
+
+- **port**（整数，默认 `3721`）：HTTP 服务起始端口
+- **bind**（字符串，默认 `"127.0.0.1"`）：监听地址
+- **url**（字符串，默认 `""`）：自定义访问地址（可选）
+- **timeout**（整数，默认 `0`）：超时时间（秒），0 表示不超时
 "#;
 
 pub struct ConfigManager {
     pub root: PathBuf,
     pub aide_dir: PathBuf,
     pub config_path: PathBuf,
+    pub config_md_path: PathBuf,
     pub decisions_dir: PathBuf,
     pub logs_dir: PathBuf,
+    pub backups_dir: PathBuf,
 }
 
 impl ConfigManager {
@@ -114,8 +122,10 @@ impl ConfigManager {
         Self {
             root: root.to_path_buf(),
             config_path: aide_dir.join("config.toml"),
+            config_md_path: aide_dir.join("config.md"),
             decisions_dir: aide_dir.join("decisions"),
             logs_dir: aide_dir.join("logs"),
+            backups_dir: aide_dir.join("backups"),
             aide_dir,
         }
     }
@@ -124,6 +134,7 @@ impl ConfigManager {
         fs::create_dir_all(&self.aide_dir)?;
         fs::create_dir_all(&self.decisions_dir)?;
         fs::create_dir_all(&self.logs_dir)?;
+        fs::create_dir_all(&self.backups_dir)?;
         Ok(())
     }
 
@@ -159,11 +170,30 @@ impl ConfigManager {
 
     pub fn ensure_config(&self) -> toml::Value {
         let _ = self.ensure_base_dirs();
+        let mut created_config = false;
+        let mut created_md = false;
+
         if !self.config_path.exists() {
             let _ = fs::write(&self.config_path, DEFAULT_CONFIG);
             output::ok("已创建默认配置 .aide/config.toml");
+            created_config = true;
         }
+
+        if !self.config_md_path.exists() {
+            let _ = fs::write(&self.config_md_path, DEFAULT_CONFIG_MD);
+            output::ok("已创建配置说明 .aide/config.md");
+            created_md = true;
+        }
+
+        if !created_config && !created_md {
+            // 仅在两者都已存在时不输出
+        }
+
         self.load_config()
+    }
+
+    pub fn generate_config_md(&self) {
+        let _ = fs::write(&self.config_md_path, DEFAULT_CONFIG_MD);
     }
 
     pub fn load_config(&self) -> toml::Value {
@@ -479,16 +509,18 @@ mod tests {
     }
 
     #[test]
-    fn test_set_value_preserves_other_comments() {
+    fn test_set_value_preserves_structure() {
         let tmp = TempDir::new().unwrap();
         let cm = ConfigManager::new(tmp.path());
         cm.ensure_config();
         let original = std::fs::read_to_string(&cm.config_path).unwrap();
-        assert!(original.contains("# [flow] - 流程追踪配置"));
-        // 修改 task.source 不应影响 flow 部分的注释
+        assert!(original.contains("[flow]"));
+        assert!(original.contains("[meta]"));
+        // 修改 task.source 不应影响其他配置节
         cm.set_value("task.source", "changed.md");
         let updated = std::fs::read_to_string(&cm.config_path).unwrap();
-        assert!(updated.contains("# [flow] - 流程追踪配置"));
+        assert!(updated.contains("[flow]"));
+        assert!(updated.contains("[meta]"));
     }
 
     // === ensure_gitignore 测试 ===

@@ -18,6 +18,10 @@ aide init
 aide config get task.source
 aide config set task.source "my-task.md"
 
+# 配置管理
+aide config reset          # 重置配置到默认值（自动备份）
+aide config update         # 更新配置到最新版本
+
 # 开始任务流程
 aide flow start task-optimize "开始任务优化"
 aide flow next-step "完成第一步"
@@ -33,6 +37,6 @@ aide decide result
 | 命令 | 说明 |
 |------|------|
 | `aide init` | 初始化 .aide 目录与默认配置 |
-| `aide config` | 配置管理（get/set） |
+| `aide config` | 配置管理（get/set/reset/update） |
 | `aide flow` | 进度追踪与 git 集成 |
 | `aide decide` | 待定项确认与决策记录 |
