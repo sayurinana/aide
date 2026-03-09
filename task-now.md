@@ -12,5 +12,5 @@
 
 添加--global支持，执行aide init --global时，不需要改动当前工作目录下的文件，也不用在当前工作目录创建.aide目录，只要在用户主目录下创建.aide/config.toml，当文件已存在时无动作，仅提示已存在。
 
-执行aide config update --global时，同上，仅对用户主目录下的配置文件进行更新（差不多相当于在用户主目录下执行aide update），
+执行aide config update --global、aide config reset --global时，同上，仅对用户主目录下的配置文件进行更新（差不多相当于在用户主目录下执行aide update），
 
