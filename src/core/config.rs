@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::core::output;
 
 pub const CURRENT_AIDE_VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const CURRENT_SCHEMA_VERSION: i64 = 1;
+pub const CURRENT_SCHEMA_VERSION: i64 = 2;
 
 /// 获取全局配置目录路径 `$HOME/.aide`
 /// 当 `$HOME` 环境变量不可用时返回 None
@@ -14,7 +14,7 @@ pub fn global_aide_dir() -> Option<PathBuf> {
 
 pub const DEFAULT_CONFIG: &str = r#"[meta]
 aide_version = "0.1.0"
-schema_version = 1
+schema_version = 2
 
 [general]
 gitignore_aide = false
@@ -32,7 +32,10 @@ phases = ["task-optimize", "flow-design", "impl", "verify", "docs", "confirm", "
 diagram_path = ".aide/diagrams"
 
 [plantuml]
-jar_path = ""
+download_cache_path = "download-buffer"
+clean_cache_after_install = true
+install_path = "utils"
+download_url = "https://github.com/sayurinana/agent-aide/releases/download/resource-001/plantuml-1.2025.4-linux-x64.tar.gz"
 font_name = "Arial"
 dpi = 300
 scale = 0.5
@@ -95,9 +98,16 @@ pub const DEFAULT_CONFIG_MD: &str = r#"# Aide 配置说明
 
 ## [plantuml] - PlantUML 配置
 
-PlantUML 图表生成相关配置。
+PlantUML 图表生成及工具管理相关配置。路径配置均为相对于 `~/.aide/` 全局配置目录的相对路径。
 
-- **jar_path**（字符串，默认 `""`）：PlantUML jar 文件路径（留空则使用系统默认）
+- **download_cache_path**（字符串，默认 `"download-buffer"`）：下载缓存目录
+  - 相对于 `~/.aide/`，即默认路径为 `~/.aide/download-buffer/`
+- **clean_cache_after_install**（布尔值，默认 `true`）：安装完成后是否删除下载的压缩包
+- **install_path**（字符串，默认 `"utils"`）：工具程序安装目录
+  - 相对于 `~/.aide/`，即默认路径为 `~/.aide/utils/`
+  - PlantUML 可执行文件路径为 `~/.aide/{install_path}/plantuml/bin/plantuml`
+- **download_url**（字符串）：PlantUML 程序包下载链接
+  - 默认指向 GitHub Releases 上的 Linux x64 自包含程序包
 - **font_name**（字符串，默认 `"Arial"`）：图表默认字体
 - **dpi**（整数，默认 `300`）：图表 DPI 值
 - **scale**（浮点数，默认 `0.5`）：图表缩放系数

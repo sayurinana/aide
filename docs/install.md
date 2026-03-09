@@ -10,7 +10,7 @@
 ### 可选
 
 - **Git**: 用于 flow 命令的分支管理和自动提交
-- **Java + PlantUML**: 用于流程图生成 hooks
+- **PlantUML**: 用于流程图生成（可通过 `aide init --global` 自动安装）
 
 ## 从源码构建
 
@@ -82,14 +82,32 @@ aide decide submit data.json --web-dir /path/to/custom/web
 
 ### PlantUML 配置
 
-如需使用 PlantUML 流程图功能：
+PlantUML 用于流程图生成。aide 支持自动下载和安装自包含的 PlantUML 可执行程序（内嵌 JRE，无需单独安装 Java）：
 
-1. 安装 Java 运行环境
-2. 下载 PlantUML jar 文件
-3. 配置 jar 路径（三种方式，按优先级）：
-   - `aide config set plantuml.jar_path /path/to/plantuml.jar`
-   - 将 `plantuml.jar` 放到可执行文件同级 `lib/` 目录下
-   - 确保系统 PATH 中有 `plantuml` 命令
+```bash
+# 初始化全局配置时自动检测并提示安装 PlantUML
+aide init --global
+
+# 查看 PlantUML 安装状态
+aide -V
+```
+
+安装后，PlantUML 可执行文件位于 `~/.aide/utils/plantuml/bin/plantuml`。
+
+如需自定义配置：
+
+```bash
+# 自定义安装路径（相对于 ~/.aide/）
+aide config set --global plantuml.install_path "custom-utils"
+
+# 自定义下载链接
+aide config set --global plantuml.download_url "https://example.com/plantuml.tar.gz"
+
+# 安装后不删除下载缓存
+aide config set --global plantuml.clean_cache_after_install false
+```
+
+如不使用自动安装，也可确保系统 PATH 中有 `plantuml` 命令。
 
 ## 交叉编译
 
@@ -121,3 +139,6 @@ cargo build --release --target x86_64-unknown-linux-musl
 | rand | 0.8 | 随机数生成 |
 | ctrlc | 3 | Ctrl+C 信号处理 |
 | libc | 0.2 | Unix 系统调用（仅 Unix） |
+| reqwest | 0.12 | HTTP 客户端（PlantUML 下载） |
+| flate2 | 1 | gzip 解压 |
+| tar | 0.4 | tar 归档解压 |

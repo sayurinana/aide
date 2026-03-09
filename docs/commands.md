@@ -1,20 +1,57 @@
 # 命令参考
 
+## aide -V / aide --version
+
+显示 aide 版本信息及 PlantUML 可用性状态。
+
+```bash
+aide -V
+```
+
+**输出示例（PlantUML 已安装）：**
+```
+aide 0.1.0
+
+PlantUML:
+  版本: 1.2025.4
+  路径: ~/.aide/utils/plantuml/bin/plantuml
+  状态: 可用
+```
+
+**输出示例（PlantUML 未安装）：**
+```
+aide 0.1.0
+
+PlantUML:
+  状态: 未安装
+  提示: 运行 aide init --global 安装 PlantUML
+```
+
+---
+
 ## aide init
 
 初始化 `.aide` 目录和默认配置文件。
 
 ```bash
 aide init
+aide init --global
 ```
 
-**行为：**
+**行为（无 --global）：**
+- 确保全局配置 `~/.aide/config.toml` 存在
 - 在当前目录创建 `.aide/` 目录
-- 生成简洁的 `config.toml` 配置文件（包含 `[meta]` 版本信息）
+- 从全局配置复制到项目 `.aide/config.toml`
 - 生成详细的 `config.md` 配置说明文档
 - 创建 `decisions/`、`logs/` 和 `backups/` 子目录
 - 根据 `general.gitignore_aide` 配置管理 `.gitignore`
 - 幂等操作，重复执行不会覆盖已有配置
+
+**行为（--global）：**
+- 在 `~/.aide/` 下创建全局配置（如不存在）
+- 检测 PlantUML 可执行程序是否已安装
+  - 已安装：显示版本信息
+  - 未安装：提示用户是否自动下载并安装
 
 ---
 

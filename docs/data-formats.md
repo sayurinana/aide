@@ -38,8 +38,14 @@ phases = ["task-optimize", "flow-design", "impl", "verify", "docs", "confirm", "
 diagram_path = ".aide/diagrams"
 
 [plantuml]
-# PlantUML jar 文件路径（为空则自动搜索）
-jar_path = ""
+# 下载缓存目录（相对于 ~/.aide/）
+download_cache_path = "download-buffer"
+# 安装完成后是否删除下载的压缩包
+clean_cache_after_install = true
+# 工具程序安装目录（相对于 ~/.aide/）
+install_path = "utils"
+# PlantUML 程序包下载链接
+download_url = "https://github.com/sayurinana/agent-aide/releases/download/resource-001/plantuml-1.2025.4-linux-x64.tar.gz"
 # 默认字体名称
 font_name = "Arial"
 # DPI 值
@@ -69,7 +75,10 @@ timeout = 0
 | `docs.path` | string | `".aide/project-docs"` | 项目文档目录 |
 | `flow.phases` | string[] | 7 个默认环节 | 有序环节列表 |
 | `flow.diagram_path` | string | `".aide/diagrams"` | 流程图目录 |
-| `plantuml.jar_path` | string | `""` | PlantUML jar 路径 |
+| `plantuml.download_cache_path` | string | `"download-buffer"` | 下载缓存目录（相对于 ~/.aide/） |
+| `plantuml.clean_cache_after_install` | bool | `true` | 安装后是否删除缓存 |
+| `plantuml.install_path` | string | `"utils"` | 工具安装目录（相对于 ~/.aide/） |
+| `plantuml.download_url` | string | GitHub 链接 | PlantUML 程序包下载链接 |
 | `plantuml.font_name` | string | `"Arial"` | PlantUML 字体 |
 | `plantuml.dpi` | int | `300` | PlantUML DPI |
 | `plantuml.scale` | float | `0.5` | PlantUML 缩放系数 |

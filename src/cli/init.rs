@@ -1,5 +1,6 @@
 use crate::core::config::{self, ConfigManager};
 use crate::core::output;
+use crate::core::plantuml;
 use std::fs;
 
 pub fn handle_init(global: bool) -> bool {
@@ -71,10 +72,14 @@ fn handle_init_global() -> bool {
             "全局配置已存在：{}",
             global_cfg.config_path.display()
         ));
-        return true;
+    } else {
+        let _ = global_cfg.ensure_config();
     }
 
-    let _ = global_cfg.ensure_config();
+    // 检测 PlantUML 可用性
+    let global_config = global_cfg.load_config();
+    plantuml::ensure_plantuml(&global_config);
+
     output::ok("全局配置初始化完成");
     true
 }

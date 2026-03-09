@@ -1,102 +1,131 @@
-# 任务解析结果：aide 全局配置支持
+# 任务解析结果
 
 ## 原始内容概述
 
-用户希望 aide 工具支持全局配置（`~/.aide/config.toml`），作为项目配置的模板源。`aide init` 时先确保全局配置存在，再将其复制到项目目录。同时为 `init`、`config get`、`config set`、`config reset`、`config update` 命令添加 `--global` 标志，支持直接操作全局配置。
+用户希望将 PlantUML 工具集成到 aide 程序中，使其不依赖外部环境即可运行。需要在配置系统中添加下载缓存、安装路径、下载链接等配置项，并在 `aide init --global` 和 `aide -V` 命令中集成 PlantUML 的检测、安装和版本显示功能。
 
 ## 核心意图
 
-建立"全局配置 + 项目配置"的两级配置体系：全局配置作为所有新项目的默认模板，项目配置独立于全局配置可单独修改。
+将 PlantUML 作为 aide 的内置工具，通过自动下载和解压自包含的可执行程序包实现开箱即用，消除对外部 Java/PlantUML 环境的依赖。
 
 ## 结构化任务描述
 
 ### 目标
 
-为 aide 添加全局配置文件支持（`~/.aide/config.toml`），并为相关命令添加 `--global` 标志以支持直接操作全局配置。
+在 aide 配置系统中新增工具管理相关配置，并实现 PlantUML 可执行程序的自动检测、下载、解压和版本显示功能。
 
 ### 具体要求
 
-#### 1. 全局配置目录和文件
+#### 1. 配置变更
 
-- 全局配置路径：`$HOME/.aide/config.toml`
-- 若 `~/.aide/` 目录不存在，需自动创建
-- 全局配置内容与项目配置完全一致（同一个 `DEFAULT_CONFIG` 模板）
+在 `DEFAULT_CONFIG` 中进行以下修改：
 
-#### 2. `aide init`（无 --global）行为变更
+**废弃字段：**
+- 移除 `[plantuml]` 节中的 `jar_path` 字段
 
-- **步骤 1**：检查全局配置 `~/.aide/config.toml` 是否存在
-  - 若不存在：创建 `~/.aide/` 目录（如需要）并写入默认配置
-  - 若已存在：不做任何操作
-- **步骤 2**：检查项目配置 `.aide/config.toml` 是否存在
-  - 若不存在：从全局配置**复制**到项目目录的 `.aide/config.toml`
-  - 若已存在：跳过，不覆盖
-- **步骤 3**（schema 版本检测）：当全局配置的 `meta.schema_version` 低于当前 aide 版本的 `CURRENT_SCHEMA_VERSION` 时，向用户输出提示信息（例如："全局配置 schema 版本较低，建议执行 `aide config update --global` 升级"），但不自动升级
-- **步骤 4**：继续执行现有逻辑（`ensure_gitignore` 等）
+**新增字段（位于 `[plantuml]` 节）：**
 
-#### 3. `aide init --global`
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `plantuml.download_cache_path` | 字符串 | `"download-buffer"` | 下载缓存目录，相对于 `~/.aide/` |
+| `plantuml.clean_cache_after_install` | 布尔值 | `true` | 安装完成后是否删除下载的压缩包 |
+| `plantuml.install_path` | 字符串 | `"utils"` | 工具程序安装目录，相对于 `~/.aide/` |
+| `plantuml.download_url` | 字符串 | `"https://github.com/sayurinana/agent-aide/releases/download/resource-001/plantuml-1.2025.4-linux-x64.tar.gz"` | PlantUML 程序包下载链接 |
 
-- 仅在用户主目录下创建 `~/.aide/config.toml`
-- 若 `~/.aide/` 目录不存在，自动创建
-- 若 `~/.aide/config.toml` 已存在，无操作，仅输出提示："全局配置已存在：~/.aide/config.toml"
-- **不**修改当前工作目录下的任何文件
-- **不**在当前工作目录创建 `.aide/` 目录
+> 所有相对路径均相对于 `~/.aide/` 目录。例如 `install_path = "utils"` 对应 `~/.aide/utils/`。
 
-#### 4. `aide config get --global <key>`
+**PlantUML 可执行文件路径拼接规则：**
+`~/.aide/{install_path}/plantuml/bin/plantuml`
 
-- 从全局配置 `~/.aide/config.toml` 中读取指定配置项的值
-- 若全局配置文件不存在，输出错误提示
+按默认配置即为：`~/.aide/utils/plantuml/bin/plantuml`
 
-#### 5. `aide config set --global <key> <value>`
+#### 2. `aide init --global` 命令增强
 
-- 修改全局配置 `~/.aide/config.toml` 中指定配置项的值
-- 若全局配置文件不存在，输出错误提示
+在全局初始化完成后，增加 PlantUML 检测和安装流程：
 
-#### 6. `aide config reset --global [--force]`
+1. 根据配置拼接 PlantUML 可执行文件路径
+2. 检测该文件是否存在且可执行
+3. 如可用：输出 PlantUML 版本信息（执行 `plantuml -version`）
+4. 如不可用：
+   - 提示用户 "PlantUML 未安装，是否现在自动下载并安装？[Y/n]"
+   - 用户确认后执行自动安装：
+     a. 创建下载缓存目录（`~/.aide/{download_cache_path}/`）
+     b. 从 `plantuml.download_url` 下载压缩包到缓存目录
+     c. 创建安装目录（`~/.aide/{install_path}/`）
+     d. 解压 tar.gz 到安装目录（解压后应得到 `plantuml/` 子目录）
+     e. 验证安装结果（检测可执行文件是否存在）
+     f. 如配置了 `clean_cache_after_install = true`，删除下载的压缩包
+     g. 输出安装成功信息及版本号
 
-- 仅对 `~/.aide/config.toml` 进行重置操作
-- 重置前同样需要备份（备份到 `~/.aide/backups/`）和确认（除非 `--force`）
-- **不**影响当前工作目录下的配置文件
+#### 3. `aide -V` 命令增强
 
-#### 7. `aide config update --global`
+自定义版本输出行为（替代 clap 默认的 `--version` 处理）：
 
-- 仅对 `~/.aide/config.toml` 进行 schema 版本升级
-- **不**影响当前工作目录下的配置文件
+输出格式：
+```
+aide 0.1.0
+
+PlantUML:
+  版本: 1.2025.4
+  路径: ~/.aide/utils/plantuml/bin/plantuml
+  状态: 可用
+```
+
+当 PlantUML 不可用时：
+```
+aide 0.1.0
+
+PlantUML:
+  状态: 未安装
+  提示: 运行 aide init --global 安装 PlantUML
+```
+
+#### 4. 配置文档更新
+
+同步更新 `DEFAULT_CONFIG_MD` 中的 `[plantuml]` 节说明，反映新增和废弃的配置项。
 
 ### 约束条件
 
-- 全局配置和项目配置格式完全一致，使用同一个 `DEFAULT_CONFIG` 模板
-- 全局配置路径固定为 `$HOME/.aide/config.toml`
-- 现有项目配置的功能和行为不受影响（向后兼容）
-- `--global` 标志在 `init`、`config get`、`config set`、`config reset`、`config update` 五个命令上统一支持
-- 备份目录在全局模式下为 `~/.aide/backups/`
+- 仅支持 Linux x64 平台
+- 使用 reqwest 库实现 HTTP 下载（需新增依赖）
+- 解压 tar.gz 使用 flate2 + tar 库（需新增依赖）
+- 所有路径配置均为相对于 `~/.aide/` 的相对路径
+- PlantUML 检测应通过执行 `plantuml -version` 并解析输出获取版本号
+- 下载过程应显示进度信息
+- 必须同步更新 `meta.schema_version` 版本号
 
 ### 期望产出
 
-- 修改 `src/main.rs`：为 `Init` 和各 `ConfigCommands` 添加 `--global` 参数
-- 修改 `src/cli/init.rs`：实现 `--global` 分支逻辑和全局配置初始化
-- 修改 `src/cli/config.rs`：各子命令支持 `--global` 操作全局配置
-- 修改 `src/core/config.rs`：`ConfigManager` 支持全局配置路径操作（或新增全局配置辅助函数）
+- 更新后的 `DEFAULT_CONFIG` 和 `DEFAULT_CONFIG_MD` 常量
+- PlantUML 管理模块（检测、下载、解压、验证）
+- 增强后的 `handle_init_global()` 函数
+- 自定义版本输出逻辑
 - 对应的单元测试
+- `schema_version` 升级及配置迁移处理
 
 ## 分析发现
 
 ### 识别的风险
 
-- `$HOME` 环境变量在某些环境下可能未设置（如容器、CI），需要有降级处理
-- 全局配置中的相对路径（如 `task.source = "task-now.md"`）在全局层面只是作为模板的默认值，实际运行时仍以项目目录为基准，这在语义上是合理的
-- `config.md` 说明文档是否也需要在全局目录下生成？建议一致处理（全局目录下也生成）
+- **网络依赖**：下载过程依赖网络连接，需处理网络超时、连接失败等情况
+- **磁盘空间**：压缩包约 74MB，解压后更大，需考虑磁盘空间不足的情况
+- **权限问题**：解压后的可执行文件需要正确的执行权限
+- **配置迁移**：`jar_path` 废弃后，已有用户的配置文件需要迁移处理（`aide config update` 逻辑）
+- **下载中断**：大文件下载可能中断，需考虑断点续传或重新下载
 
 ### 优化建议
 
-- 使用 Rust 标准库的 `dirs::home_dir()` 或 `std::env::var("HOME")` 获取主目录，建议优先使用 `dirs` crate 以获得跨平台兼容性（如果项目已引入），否则使用 `std::env::var("HOME")`
-- 可以在 `ConfigManager` 中添加一个 `new_global()` 构造函数，以 `~/.aide/` 为根目录创建实例，复用现有的 `ensure_config`、`load_config` 等方法，避免代码重复
-- 全局 `config.md` 建议也同步生成
+- 下载时显示进度条或百分比，提升用户体验
+- 对现有使用 `jar_path` 的代码进行检索，确保废弃后不会导致功能回归
+- `aide -V` 的 PlantUML 检测应该是轻量的（仅检查文件存在），避免每次都执行子进程
 
 ## 复杂度评估
 
 | 维度 | 评估 | 说明 |
 |------|------|------|
-| 结构复杂度 | 中 | 涉及 4 个文件的修改，新增参数和分支逻辑 |
-| 逻辑复杂度 | 中 | init 流程需要处理全局/项目两级配置的协调 |
-| 集成复杂度 | 低 | 不涉及外部依赖，仅文件系统操作 |
-| 风险等级 | 低 | 纯新增功能，现有行为通过"不覆盖"策略保持兼容 |
+| 结构复杂度 | 中 | 涉及 config.rs、init.rs、main.rs 及新增模块 |
+| 逻辑复杂度 | 中 | 下载/解压/检测逻辑、用户交互、错误处理 |
+| 集成复杂度 | 中 | 需引入 reqwest、flate2、tar 依赖 |
+| 风险等级 | 低 | 新增功能为主，不影响现有核心流程 |
+
+建议将任务拆分为：配置变更 → PlantUML 管理模块 → init 命令集成 → 版本命令集成 → 测试 五个阶段实施。

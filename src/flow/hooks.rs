@@ -34,40 +34,14 @@ pub fn run_post_commit_hooks(to_phase: &str, action: &str) {
 }
 
 fn get_plantuml_command(config: &toml::Value) -> Option<Vec<String>> {
-    let jar_path = config
-        .get("plantuml")
-        .and_then(|p| p.get("jar_path"))
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
-
-    if !jar_path.is_empty() {
-        let jar_file = std::path::PathBuf::from(jar_path);
-        let jar_file = if jar_file.is_absolute() {
-            jar_file
-        } else {
-            // 相对路径：相对于可执行文件目录
-            let exe_dir = std::env::current_exe()
-                .ok()
-                .and_then(|e| e.parent().map(|p| p.to_path_buf()))
-                .unwrap_or_else(|| std::path::PathBuf::from("."));
-            exe_dir.join(jar_path)
-        };
-
-        if jar_file.exists() {
-            let java_path = config
-                .get("plantuml")
-                .and_then(|p| p.get("java_path"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("java");
-            return Some(vec![
-                java_path.to_string(),
-                "-jar".to_string(),
-                jar_file.to_string_lossy().to_string(),
-            ]);
+    // 优先使用全局配置中的自包含可执行程序
+    if let Some(path) = crate::core::plantuml::get_plantuml_path(config) {
+        if path.exists() {
+            return Some(vec![path.to_string_lossy().to_string()]);
         }
     }
 
-    // 回退到系统 plantuml 命令
+    // 回退到系统 PATH 中的 plantuml 命令
     if Command::new("plantuml")
         .arg("--version")
         .output()

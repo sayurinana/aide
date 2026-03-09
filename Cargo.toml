@@ -16,6 +16,9 @@ fs2 = "0.4"
 rand = "0.8"
 tower-http = { version = "0.6", features = ["cors"] }
 ctrlc = "3"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
+flate2 = "1"
+tar = "0.4"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

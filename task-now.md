@@ -6,11 +6,23 @@
 
 完成下述需求：
 
-我希望aide init时同时在用户主目录下的.aide目录（不存在则自动创建）下创建一份config.toml，之后项目目录中的config.toml从这里复制，
+在配置文件中添加几项配置：
+- 下载缓存路径（默认为download-buffer）
+- 完成安装后是否删除下载缓存文件（默认为是，删除）
+- 工具程序安装路径（默认为utils）
+- plantuml 程序包下载链接（默认值见下文）
 
-如果用户主目录下已有全局配置文件，则aide init不需要再次创建或覆盖，直接复制它到项目目录（工作目录）即可。
+> 使用的相对路径都是相对于用户目录下的.aide目录，例如utils就是~/.aide/utils
 
-添加--global支持，执行aide init --global时，不需要改动当前工作目录下的文件，也不用在当前工作目录创建.aide目录，只要在用户主目录下创建.aide/config.toml，当文件已存在时无动作，仅提示已存在。
+主要是为了我希望plantuml这种工具要能被直接集成到本程序中，不依靠外部环境支持。
 
-执行aide config update --global、aide config reset --global时，同上，仅对用户主目录下的配置文件进行更新（差不多相当于在用户主目录下执行aide update），
+我制作了一个plantuml的可执行程序文件打包，可以脱离java运行，上传到了github中，链接是 https://github.com/sayurinana/agent-aide/releases/download/resource-001/plantuml-1.2025.4-linux-x64.tar.gz ，我希望把这个作为下载使用的plantuml程序包默认链接。
 
+我已经在当前项目目录的lib目录下下载好了所需的压缩包，并使用`tar zxf`对它完成了解压，把解压后的文件移动到了utils目录下，
+这里的lib就差不多相对于实际运行时的`~/.aide`目录，你可以查看一下lib的目录结构。
+
+我希望使用aide init --global时，检测是否配置好了plantuml可执行程序，plantuml是否可用，
+例如按照我上面给出的默认配置，拼接得出plantuml的路径就是`~/.aide/utils/plantuml/bin/plantuml`，
+如果不可用，则提示用户是否现在自动进行下载和解压等操作。
+
+且运行aide -V时自动检测plantuml可用性，如不可用则提示进行下载安装，如可用则同时显示plantuml的版本。

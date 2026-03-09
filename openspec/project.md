@@ -25,7 +25,7 @@ Aide 是一个命令行工作流辅助工具，作为 Aide 插件系统的核心
 - **配置格式**：TOML（项目配置）、JSON（状态和决策数据）
 - **外部工具**：
   - Git（流程追踪的自动提交）
-  - PlantUML / Java（流程图生成，`lib/plantuml.jar`）
+  - PlantUML（流程图生成，通过 `aide init --global` 自动安装自包含可执行程序）
 - **包管理**：Cargo（Rust 依赖管理）
 
 ## Project Conventions
@@ -129,7 +129,7 @@ Aide 是一个命令行工作流辅助工具，作为 Aide 插件系统的核心
 
 1. **Rust 迁移范围**：不实现 `aide env` 及其所有子命令，仅迁移 init、config、flow、decide
 2. **Git 依赖**：flow 命令假设在 Git 仓库中运行，自动执行 git 操作
-3. **PlantUML 依赖**：流程图生成需要 Java 运行环境和 `lib/plantuml.jar`
+3. **PlantUML 依赖**：流程图生成使用自包含可执行程序（内嵌 JRE），通过 `aide init --global` 自动安装到 `~/.aide/utils/plantuml/`
 4. **端口配置**：decide 服务默认端口 3721，可通过配置修改
 5. **文件锁**：状态文件操作需要文件锁保证并发安全
 6. **配置保留**：更新 TOML 配置时需保留用户注释
@@ -138,5 +138,5 @@ Aide 是一个命令行工作流辅助工具，作为 Aide 插件系统的核心
 ## External Dependencies
 
 - **Git**：版本控制系统，flow 命令通过子进程调用 git 命令
-- **Java**（可选）：PlantUML 流程图生成依赖
-- **PlantUML**（`lib/plantuml.jar`）：UML 图表生成工具
+- **Java**（不再需要）：PlantUML 使用自包含可执行程序，内嵌 JRE
+- **PlantUML**（`~/.aide/utils/plantuml/bin/plantuml`）：UML 图表生成工具，通过 aide 自动管理

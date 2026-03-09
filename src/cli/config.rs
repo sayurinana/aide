@@ -171,11 +171,117 @@ pub fn handle_config_update(global: bool) -> bool {
         crate::core::config::CURRENT_SCHEMA_VERSION
     ));
 
-    let _ = fs::write(&cfg.config_path, crate::core::config::DEFAULT_CONFIG);
+    // 使用 toml_edit 保留用户自定义值
+    let content = fs::read_to_string(&cfg.config_path).unwrap_or_default();
+    let mut doc = match content.parse::<toml_edit::DocumentMut>() {
+        Ok(d) => d,
+        Err(_) => {
+            output::warn("配置文件解析失败，将使用默认配置覆盖");
+            let _ = fs::write(&cfg.config_path, crate::core::config::DEFAULT_CONFIG);
+            cfg.generate_config_md();
+            output::ok(&format!(
+                "配置已更新到 schema v{}",
+                crate::core::config::CURRENT_SCHEMA_VERSION
+            ));
+            return true;
+        }
+    };
+
+    // 执行逐版本迁移
+    let mut schema = current_schema;
+    while schema < crate::core::config::CURRENT_SCHEMA_VERSION {
+        match schema {
+            0 | 1 => migrate_v1_to_v2(&mut doc),
+            _ => {}
+        }
+        schema += 1;
+    }
+
+    // 更新 meta 版本信息
+    if let Some(meta) = doc.get_mut("meta").and_then(|v| v.as_table_mut()) {
+        meta.insert(
+            "schema_version",
+            toml_edit::Item::Value(toml_edit::Value::from(
+                crate::core::config::CURRENT_SCHEMA_VERSION,
+            )),
+        );
+        meta.insert(
+            "aide_version",
+            toml_edit::Item::Value(toml_edit::Value::from(
+                crate::core::config::CURRENT_AIDE_VERSION,
+            )),
+        );
+    } else {
+        // meta 节不存在，创建
+        let mut meta = toml_edit::Table::new();
+        meta.insert(
+            "aide_version",
+            toml_edit::Item::Value(toml_edit::Value::from(
+                crate::core::config::CURRENT_AIDE_VERSION,
+            )),
+        );
+        meta.insert(
+            "schema_version",
+            toml_edit::Item::Value(toml_edit::Value::from(
+                crate::core::config::CURRENT_SCHEMA_VERSION,
+            )),
+        );
+        doc.insert("meta", toml_edit::Item::Table(meta));
+    }
+
+    let _ = fs::write(&cfg.config_path, doc.to_string());
     cfg.generate_config_md();
 
-    output::ok(&format!("配置已更新到 schema v{}", crate::core::config::CURRENT_SCHEMA_VERSION));
-    let md_display = if global { "~/.aide/config.md" } else { ".aide/config.md" };
+    output::ok(&format!(
+        "配置已更新到 schema v{}",
+        crate::core::config::CURRENT_SCHEMA_VERSION
+    ));
+    let md_display = if global {
+        "~/.aide/config.md"
+    } else {
+        ".aide/config.md"
+    };
     output::ok(&format!("已更新配置说明 {}", md_display));
     true
+}
+
+/// Schema v1 → v2 迁移：移除 jar_path，添加 PlantUML 工具管理配置
+fn migrate_v1_to_v2(doc: &mut toml_edit::DocumentMut) {
+    // 确保 [plantuml] 节存在
+    if doc.get("plantuml").is_none() {
+        doc.insert("plantuml", toml_edit::Item::Table(toml_edit::Table::new()));
+    }
+
+    if let Some(plantuml) = doc.get_mut("plantuml").and_then(|v| v.as_table_mut()) {
+        // 移除 jar_path
+        plantuml.remove("jar_path");
+
+        // 添加新配置项（仅在不存在时添加）
+        if plantuml.get("download_cache_path").is_none() {
+            plantuml.insert(
+                "download_cache_path",
+                toml_edit::Item::Value(toml_edit::Value::from("download-buffer")),
+            );
+        }
+        if plantuml.get("clean_cache_after_install").is_none() {
+            plantuml.insert(
+                "clean_cache_after_install",
+                toml_edit::Item::Value(toml_edit::Value::from(true)),
+            );
+        }
+        if plantuml.get("install_path").is_none() {
+            plantuml.insert(
+                "install_path",
+                toml_edit::Item::Value(toml_edit::Value::from("utils")),
+            );
+        }
+        if plantuml.get("download_url").is_none() {
+            plantuml.insert(
+                "download_url",
+                toml_edit::Item::Value(toml_edit::Value::from(
+                    "https://github.com/sayurinana/agent-aide/releases/download/resource-001/plantuml-1.2025.4-linux-x64.tar.gz",
+                )),
+            );
+        }
+    }
 }

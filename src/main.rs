@@ -7,8 +7,12 @@ mod utils;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "aide", about = "Aide 工作流辅助工具", version)]
+#[command(name = "aide", about = "Aide 工作流辅助工具")]
 struct Cli {
+    /// 显示版本信息
+    #[arg(short = 'V', long = "version")]
+    version: bool,
+
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -176,6 +180,11 @@ async fn main() {
 
     let cli = Cli::parse();
 
+    if cli.version {
+        print_version();
+        return;
+    }
+
     let result = match cli.command {
         None => {
             Cli::parse_from(["aide", "--help"]);
@@ -255,4 +264,24 @@ fn ctrlc_handler() {
         crate::core::output::err("操作已取消");
         std::process::exit(1);
     });
+}
+
+fn print_version() {
+    println!("aide {}", env!("CARGO_PKG_VERSION"));
+
+    let status = crate::core::plantuml::get_plantuml_status();
+    println!();
+    println!("PlantUML:");
+    if status.available {
+        if let Some(version) = &status.version {
+            println!("  版本: {version}");
+        }
+        if let Some(path) = &status.path {
+            println!("  路径: {path}");
+        }
+        println!("  状态: 可用");
+    } else {
+        println!("  状态: 未安装");
+        println!("  提示: 运行 aide init --global 安装 PlantUML");
+    }
 }

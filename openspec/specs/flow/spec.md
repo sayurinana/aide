@@ -352,7 +352,9 @@ error 额外输出 `✗ 错误已记录: <description>`。
 
 系统 SHALL 在离开 `flow-design` 环节时执行 PlantUML 验证 hook：
 1. 收集 `.puml` 和 `.plantuml` 文件（从 `flow.diagram_path` 配置目录及 `docs/`、`discuss/` 目录）
-2. 解析 PlantUML 命令路径（配置 jar_path → 可执行文件相对 `lib/plantuml.jar` → 系统 PATH `plantuml`）
+2. 解析 PlantUML 命令路径，按以下优先级查找：
+   a. 全局配置的自包含可执行程序：`{global_aide_dir}/{plantuml.install_path}/plantuml/bin/plantuml`
+   b. 系统 PATH 中的 `plantuml` 命令
 3. 对每个文件执行语法检查：`plantuml -checkonly <file>`
 4. 对每个文件生成 PNG：`plantuml -tpng <file>`
 5. 检查失败时阻止环节跳转
@@ -370,7 +372,7 @@ error 额外输出 `✗ 错误已记录: <description>`。
 - **AND** 阻止环节跳转
 
 #### Scenario: PlantUML 不可用
-- **WHEN** 系统未安装 Java 和 PlantUML
+- **WHEN** 系统未安装 PlantUML（自包含程序和系统命令均不可用）
 - **THEN** 输出警告信息但不阻止操作
 
 ### Requirement: CHANGELOG Hook
