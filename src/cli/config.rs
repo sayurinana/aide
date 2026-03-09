@@ -4,9 +4,45 @@ use crate::core::project::find_project_root;
 use std::fs;
 use std::io::{self, Write};
 
-pub fn handle_config_get(key: &str) -> bool {
-    let root = find_project_root(None);
-    let cfg = ConfigManager::new(&root);
+/// 根据 global 标志获取对应的 ConfigManager
+/// 当 global=true 但 $HOME 不可用时返回 None 并输出错误
+fn get_config_manager(global: bool) -> Option<ConfigManager> {
+    if global {
+        match ConfigManager::new_global() {
+            Some(cfg) => Some(cfg),
+            None => {
+                output::err("无法获取用户主目录，请确保 $HOME 环境变量已设置");
+                None
+            }
+        }
+    } else {
+        let root = find_project_root(None);
+        Some(ConfigManager::new(&root))
+    }
+}
+
+/// 检查全局配置文件是否存在，不存在时输出错误
+fn ensure_global_config_exists(cfg: &ConfigManager) -> bool {
+    if !cfg.config_path.exists() {
+        output::err(&format!(
+            "全局配置文件不存在：{}，请先执行 aide init --global",
+            cfg.config_path.display()
+        ));
+        return false;
+    }
+    true
+}
+
+pub fn handle_config_get(key: &str, global: bool) -> bool {
+    let cfg = match get_config_manager(global) {
+        Some(cfg) => cfg,
+        None => return false,
+    };
+
+    if global && !ensure_global_config_exists(&cfg) {
+        return false;
+    }
+
     match cfg.get_value(key) {
         Some(value) => {
             output::info(&format!("{key} = {value}"));
@@ -19,16 +55,25 @@ pub fn handle_config_get(key: &str) -> bool {
     }
 }
 
-pub fn handle_config_set(key: &str, value: &str) -> bool {
-    let root = find_project_root(None);
-    let cfg = ConfigManager::new(&root);
+pub fn handle_config_set(key: &str, value: &str, global: bool) -> bool {
+    let cfg = match get_config_manager(global) {
+        Some(cfg) => cfg,
+        None => return false,
+    };
+
+    if global && !ensure_global_config_exists(&cfg) {
+        return false;
+    }
+
     cfg.set_value(key, value);
     true
 }
 
-pub fn handle_config_reset(force: bool) -> bool {
-    let root = find_project_root(None);
-    let cfg = ConfigManager::new(&root);
+pub fn handle_config_reset(force: bool, global: bool) -> bool {
+    let cfg = match get_config_manager(global) {
+        Some(cfg) => cfg,
+        None => return false,
+    };
 
     if cfg.config_path.exists() && !force {
         output::warn("此操作将重置配置到默认值，现有配置将备份。是否继续？[y/N]");
@@ -57,19 +102,58 @@ pub fn handle_config_reset(force: bool) -> bool {
             return false;
         }
 
-        output::ok(&format!("已备份配置到 .aide/backups/config.toml.{}", timestamp));
+        let backup_display = if global {
+            format!("~/.aide/backups/config.toml.{}", timestamp)
+        } else {
+            format!(".aide/backups/config.toml.{}", timestamp)
+        };
+        output::ok(&format!("已备份配置到 {}", backup_display));
     }
 
-    let _ = fs::write(&cfg.config_path, crate::core::config::DEFAULT_CONFIG);
-    cfg.generate_config_md();
+    let _ = cfg.ensure_base_dirs();
 
-    output::ok("配置已重置为默认值");
+    if global {
+        // --global：从程序默认配置重新生成
+        let _ = fs::write(&cfg.config_path, crate::core::config::DEFAULT_CONFIG);
+        cfg.generate_config_md();
+        output::ok("全局配置已重置为默认值");
+    } else {
+        // 项目配置：从全局配置复制
+        match ConfigManager::new_global() {
+            Some(global_cfg) if global_cfg.config_path.exists() => {
+                let _ = fs::copy(&global_cfg.config_path, &cfg.config_path);
+                cfg.generate_config_md();
+                output::ok("项目配置已从全局配置重置");
+            }
+            _ => {
+                // 全局配置不可用，回退到程序默认配置
+                let _ = fs::write(&cfg.config_path, crate::core::config::DEFAULT_CONFIG);
+                cfg.generate_config_md();
+                output::warn("全局配置不可用，已使用程序默认配置重置");
+            }
+        }
+    }
+
     true
 }
 
-pub fn handle_config_update() -> bool {
-    let root = find_project_root(None);
-    let cfg = ConfigManager::new(&root);
+pub fn handle_config_update(global: bool) -> bool {
+    let cfg = match get_config_manager(global) {
+        Some(cfg) => cfg,
+        None => return false,
+    };
+
+    if !cfg.config_path.exists() {
+        if global {
+            output::err(&format!(
+                "全局配置文件不存在：{}，请先执行 aide init --global",
+                cfg.config_path.display()
+            ));
+        } else {
+            output::err("项目配置文件不存在，请先执行 aide init");
+        }
+        return false;
+    }
 
     let config = cfg.load_config();
     let current_schema = crate::core::config::walk_get(&config, "meta.schema_version")
@@ -91,6 +175,7 @@ pub fn handle_config_update() -> bool {
     cfg.generate_config_md();
 
     output::ok(&format!("配置已更新到 schema v{}", crate::core::config::CURRENT_SCHEMA_VERSION));
-    output::ok("已更新配置说明 .aide/config.md");
+    let md_display = if global { "~/.aide/config.md" } else { ".aide/config.md" };
+    output::ok(&format!("已更新配置说明 {}", md_display));
     true
 }

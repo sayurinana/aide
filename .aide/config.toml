@@ -19,12 +19,12 @@ diagram_path = ".aide/diagrams"
 
 [plantuml]
 jar_path = ""
-font_name = "Arial"
+font_name = "Maple Mono Normal NL NF CN"
 dpi = 300
 scale = 0.5
 
 [decide]
 port = 3721
 bind = "127.0.0.1"
-url = ""
+url = "http://192.168.3.13:3721"
 timeout = 0

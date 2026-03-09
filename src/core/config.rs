@@ -6,6 +6,12 @@ use crate::core::output;
 pub const CURRENT_AIDE_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const CURRENT_SCHEMA_VERSION: i64 = 1;
 
+/// 获取全局配置目录路径 `$HOME/.aide`
+/// 当 `$HOME` 环境变量不可用时返回 None
+pub fn global_aide_dir() -> Option<PathBuf> {
+    std::env::var("HOME").ok().map(|home| PathBuf::from(home).join(".aide"))
+}
+
 pub const DEFAULT_CONFIG: &str = r#"[meta]
 aide_version = "0.1.0"
 schema_version = 1
@@ -128,6 +134,23 @@ impl ConfigManager {
             backups_dir: aide_dir.join("backups"),
             aide_dir,
         }
+    }
+
+    /// 创建以 `$HOME` 为根目录的全局配置管理器
+    /// 全局配置目录为 `$HOME/.aide/`
+    pub fn new_global() -> Option<Self> {
+        global_aide_dir().map(|aide_dir| {
+            let root = aide_dir.parent().unwrap_or(Path::new("/")).to_path_buf();
+            Self {
+                root: root.clone(),
+                config_path: aide_dir.join("config.toml"),
+                config_md_path: aide_dir.join("config.md"),
+                decisions_dir: aide_dir.join("decisions"),
+                logs_dir: aide_dir.join("logs"),
+                backups_dir: aide_dir.join("backups"),
+                aide_dir,
+            }
+        })
     }
 
     pub fn ensure_base_dirs(&self) -> std::io::Result<()> {
@@ -621,5 +644,31 @@ mod tests {
         .unwrap();
         let phases = get_phases(&config);
         assert_eq!(phases.len(), 7);
+    }
+
+    // === global_aide_dir / new_global 测试 ===
+
+    #[test]
+    fn test_global_aide_dir_returns_path() {
+        // 测试环境中 $HOME 通常已设置
+        if std::env::var("HOME").is_ok() {
+            let dir = global_aide_dir();
+            assert!(dir.is_some());
+            let dir = dir.unwrap();
+            assert!(dir.ends_with(".aide"));
+        }
+    }
+
+    #[test]
+    fn test_new_global_creates_correct_paths() {
+        if std::env::var("HOME").is_ok() {
+            let home = PathBuf::from(std::env::var("HOME").unwrap());
+            let cm = ConfigManager::new_global();
+            assert!(cm.is_some());
+            let cm = cm.unwrap();
+            assert_eq!(cm.aide_dir, home.join(".aide"));
+            assert_eq!(cm.config_path, home.join(".aide").join("config.toml"));
+            assert_eq!(cm.backups_dir, home.join(".aide").join("backups"));
+        }
     }
 }

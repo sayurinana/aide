@@ -1,8 +1,26 @@
-# config Specification
+## ADDED Requirements
 
-## Purpose
-TBD - created by archiving change rewrite-in-rust. Update Purpose after archive.
-## Requirements
+### Requirement: 全局配置管理
+
+系统 SHALL 支持全局配置文件 `$HOME/.aide/config.toml`，与项目配置格式完全一致。
+
+全局配置目录路径通过 `std::env::var("HOME")` 获取主目录后拼接 `.aide/` 得到。当 `$HOME` 环境变量不可用时，SHALL 输出错误 `✗ 无法获取用户主目录，请确保 $HOME 环境变量已设置` 并返回失败。
+
+`ConfigManager::new_global()` SHALL 创建以 `$HOME` 为根目录的实例，使 `aide_dir` 指向 `$HOME/.aide/`，复用现有的 `ensure_config()`、`load_config()`、`get_value()`、`set_value()` 等方法。
+
+#### Scenario: 获取全局配置目录
+- **WHEN** `$HOME` 环境变量为 `/home/user`
+- **THEN** 全局配置目录为 `/home/user/.aide/`
+- **AND** 全局配置文件路径为 `/home/user/.aide/config.toml`
+
+#### Scenario: HOME 环境变量不可用
+- **WHEN** `$HOME` 环境变量未设置
+- **AND** 执行任何需要全局配置的操作
+- **THEN** 输出 `✗ 无法获取用户主目录，请确保 $HOME 环境变量已设置`
+- **AND** 返回失败
+
+## MODIFIED Requirements
+
 ### Requirement: 初始化命令
 
 `aide init` SHALL 执行以下操作：
@@ -141,69 +159,6 @@ TBD - created by archiving change rewrite-in-rust. Update Purpose after archive.
 - **AND** 全局配置文件不存在
 - **THEN** 输出 `✗` 前缀的错误信息
 
-### Requirement: 配置文件格式
-
-配置文件 `.aide/config.toml` SHALL 采用简洁格式，包含以下段落和默认值：
-
-```toml
-[meta]
-aide_version = "0.1.0"
-schema_version = 1
-
-[general]
-gitignore_aide = false
-
-[task]
-source = "task-now.md"
-spec = "task-spec.md"
-plans_path = ".aide/task-plans/"
-
-[docs]
-path = ".aide/project-docs"
-
-[flow]
-phases = ["task-optimize", "flow-design", "impl", "verify", "docs", "confirm", "finish"]
-diagram_path = ".aide/diagrams"
-
-[plantuml]
-jar_path = ""
-font_name = "Arial"
-dpi = 300
-scale = 0.5
-
-[decide]
-port = 3721
-bind = "127.0.0.1"
-url = ""
-timeout = 0
-```
-
-配置文件 SHALL 仅包含简短的行内注释，不包含详细说明。
-
-配置说明文档 `.aide/config.md` SHALL 包含所有配置项的详细说明，包括：
-- 配置项名称和类型
-- 默认值
-- 用途说明
-- 使用示例
-- 最佳实践建议
-
-#### Scenario: 简洁配置生成
-- **WHEN** 运行 `aide init` 首次初始化
-- **THEN** 生成的 `config.toml` 包含 `[meta]` 节和所有配置段落
-- **AND** 配置文件总行数不超过 50 行
-- **AND** 仅包含简短的行内注释
-
-#### Scenario: 配置文档生成
-- **WHEN** 运行 `aide init` 首次初始化
-- **THEN** 生成的 `config.md` 包含所有配置项的详细说明
-- **AND** 按配置节分组组织内容
-- **AND** 每个配置项包含完整的说明和示例
-
-#### Scenario: 版本元数据
-- **WHEN** 生成新配置文件
-- **THEN** `[meta]` 节包含当前 aide 版本号
-- **AND** 包含当前配置 schema 版本号
-
 ### Requirement: 配置重置命令
 
 `aide config reset` SHALL 将配置文件重置为默认值，并自动备份现有配置。
@@ -303,48 +258,3 @@ timeout = 0
 - **AND** 全局配置中 `meta.schema_version` 低于当前版本
 - **THEN** 更新全局配置到最新 schema 版本
 - **AND** 不影响当前工作目录下的配置文件
-
-### Requirement: 配置版本管理
-
-配置系统 SHALL 维护两个版本标识：
-- `aide_version`：生成配置的 aide 程序版本（如 "0.1.0"）
-- `schema_version`：配置结构的 schema 版本（整数，从 1 开始）
-
-Schema 版本变更规则：
-- 添加新配置项：schema 版本递增
-- 移除配置项：schema 版本递增
-- 修改配置项语义：schema 版本递增
-- 仅修改默认值：schema 版本不变
-
-配置迁移逻辑 SHALL 基于 schema 版本差异执行。
-
-#### Scenario: 版本信息记录
-- **WHEN** 生成新配置文件
-- **THEN** `[meta]` 节包含当前 aide 版本
-- **AND** 包含当前 schema 版本
-
-#### Scenario: 版本检测
-- **WHEN** 执行 `aide config update`
-- **THEN** 读取配置中的 `meta.schema_version`
-- **AND** 与当前 aide 的 schema 版本比较
-- **AND** 确定是否需要迁移
-
-### Requirement: 全局配置管理
-
-系统 SHALL 支持全局配置文件 `$HOME/.aide/config.toml`，与项目配置格式完全一致。
-
-全局配置目录路径通过 `std::env::var("HOME")` 获取主目录后拼接 `.aide/` 得到。当 `$HOME` 环境变量不可用时，SHALL 输出错误 `✗ 无法获取用户主目录，请确保 $HOME 环境变量已设置` 并返回失败。
-
-`ConfigManager::new_global()` SHALL 创建以 `$HOME` 为根目录的实例，使 `aide_dir` 指向 `$HOME/.aide/`，复用现有的 `ensure_config()`、`load_config()`、`get_value()`、`set_value()` 等方法。
-
-#### Scenario: 获取全局配置目录
-- **WHEN** `$HOME` 环境变量为 `/home/user`
-- **THEN** 全局配置目录为 `/home/user/.aide/`
-- **AND** 全局配置文件路径为 `/home/user/.aide/config.toml`
-
-#### Scenario: HOME 环境变量不可用
-- **WHEN** `$HOME` 环境变量未设置
-- **AND** 执行任何需要全局配置的操作
-- **THEN** 输出 `✗ 无法获取用户主目录，请确保 $HOME 环境变量已设置`
-- **AND** 返回失败
-

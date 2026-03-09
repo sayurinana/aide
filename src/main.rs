@@ -16,7 +16,11 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// 初始化 .aide 目录与默认配置
-    Init,
+    Init {
+        /// 仅初始化全局配置（~/.aide/config.toml）
+        #[arg(long)]
+        global: bool,
+    },
 
     /// 配置管理
     Config {
@@ -43,6 +47,9 @@ enum ConfigCommands {
     Get {
         /// 使用点号分隔的键名，如 task.source
         key: String,
+        /// 操作全局配置（~/.aide/config.toml）
+        #[arg(long)]
+        global: bool,
     },
     /// 设置配置值
     Set {
@@ -50,15 +57,25 @@ enum ConfigCommands {
         key: String,
         /// 要写入的值，支持 bool/int/float/字符串
         value: String,
+        /// 操作全局配置（~/.aide/config.toml）
+        #[arg(long)]
+        global: bool,
     },
     /// 重置配置到默认值
     Reset {
         /// 跳过确认提示
         #[arg(long)]
         force: bool,
+        /// 操作全局配置（~/.aide/config.toml）
+        #[arg(long)]
+        global: bool,
     },
     /// 更新配置到最新版本
-    Update,
+    Update {
+        /// 操作全局配置（~/.aide/config.toml）
+        #[arg(long)]
+        global: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -164,12 +181,12 @@ async fn main() {
             Cli::parse_from(["aide", "--help"]);
             true
         }
-        Some(Commands::Init) => cli::init::handle_init(),
+        Some(Commands::Init { global }) => cli::init::handle_init(global),
         Some(Commands::Config { command }) => match command {
-            ConfigCommands::Get { key } => cli::config::handle_config_get(&key),
-            ConfigCommands::Set { key, value } => cli::config::handle_config_set(&key, &value),
-            ConfigCommands::Reset { force } => cli::config::handle_config_reset(force),
-            ConfigCommands::Update => cli::config::handle_config_update(),
+            ConfigCommands::Get { key, global } => cli::config::handle_config_get(&key, global),
+            ConfigCommands::Set { key, value, global } => cli::config::handle_config_set(&key, &value, global),
+            ConfigCommands::Reset { force, global } => cli::config::handle_config_reset(force, global),
+            ConfigCommands::Update { global } => cli::config::handle_config_update(global),
         },
         Some(Commands::Flow { command }) => match command {
             None => {
