@@ -49,9 +49,16 @@
 
 ## [plantuml] - PlantUML 配置
 
-PlantUML 图表生成相关配置。
+PlantUML 图表生成及工具管理相关配置。路径配置均为相对于 `~/.aide/` 全局配置目录的相对路径。
 
-- **jar_path**（字符串，默认 `""`）：PlantUML jar 文件路径（留空则使用系统默认）
+- **download_cache_path**（字符串，默认 `"download-buffer"`）：下载缓存目录
+  - 相对于 `~/.aide/`，即默认路径为 `~/.aide/download-buffer/`
+- **clean_cache_after_install**（布尔值，默认 `true`）：安装完成后是否删除下载的压缩包
+- **install_path**（字符串，默认 `"utils"`）：工具程序安装目录
+  - 相对于 `~/.aide/`，即默认路径为 `~/.aide/utils/`
+  - PlantUML 可执行文件路径为 `~/.aide/{install_path}/plantuml/bin/plantuml`
+- **download_url**（字符串）：PlantUML 程序包下载链接
+  - 默认指向 GitHub Releases 上的 Linux x64 自包含程序包
 - **font_name**（字符串，默认 `"Arial"`）：图表默认字体
 - **dpi**（整数，默认 `300`）：图表 DPI 值
 - **scale**（浮点数，默认 `0.5`）：图表缩放系数
